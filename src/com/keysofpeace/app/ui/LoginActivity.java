@@ -1,8 +1,6 @@
 package com.keysofpeace.app.ui;
 
 import com.keysofpeace.app.R;
-import com.keysofpeace.app.R.layout;
-import com.keysofpeace.app.R.menu;
 
 import android.os.Bundle;
 import android.app.Activity;
