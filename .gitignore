@@ -34,7 +34,6 @@ tmp/**/*
 *.bak
 *.swp
 *~.nib
-.classpath
 .settings/
 .loadpath
 
