@@ -25,7 +25,7 @@ proguard/
 *.class
 
 # eclipse specific git ignore
-.project
+project.properties
 .metadata
 bin/**
 tmp/**
