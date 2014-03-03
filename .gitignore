@@ -19,7 +19,6 @@ local.properties
 proguard/
 
 *target*
-*.jar
 *.war
 *.ear
 *.class
