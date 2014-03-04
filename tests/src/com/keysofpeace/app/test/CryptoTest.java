@@ -20,8 +20,15 @@ public class CryptoTest extends TestCase {
 		byte[] bytes = { -36, 18, -74, 76, 114, 23, 99, -82, -7, -100, -77, -23, -74, -117, -46, -82, -116, 62, -6, 6, -84, 30, 61, 118, 114, 118, 23, 109, -93, 37, -125, 80 };
 		assertTrue(Arrays.equals(bytes, instance.fromString("3BK2THIXY675nLPptovSrow++gasHj12cnYXbaMlg1A=")));
 	}
+	
+	public void testDecrypt() throws CryptoException {
+		byte[] key = { -36, 18, -74, 76, 114, 23, 99, -82, -7, -100, -77, -23, -74, -117, -46, -82, -116, 62, -6, 6, -84, 30, 61, 118, 114, 118, 23, 109, -93, 37, -125, 80 };
+		String ciphertext = "cAaOEfAwHfr1+rJ5ogK3fQfXzxLVZi7PKypz/p13SbxEees6s3gQrIoz+jkGqXqLTY5G/rCpZOxr4w2ntCrLtWsiHywMtnokskaDojWzuA0SFCFlSHpTKhZKzUHJDFQFo3Seh+tFv1eTEoNGTNNcaJd6ffz7qUyrvqb/RhF1JvGyTx3OjYs04wSziw+5HqBF";
+		String string = "MYFCrMCnTH3tHiyP7bBSKNq2XxGTjB3CVpnRYNQVsEu4U6VaNZmZQLGdMd7njCGUY7uP93XYX9G6uSdnZes2cTyPATsy6DAzpNQT";
+		assertEquals(string, instance.decrypt(ciphertext, key));
+	}
 
-	public void testEncryptAndDecrypt() throws CryptoException {
+	public void testEncrypt() throws CryptoException {
 		byte[] key = { -36, 18, -74, 76, 114, 23, 99, -82, -7, -100, -77, -23, -74, -117, -46, -82, -116, 62, -6, 6, -84, 30, 61, 118, 114, 118, 23, 109, -93, 37, -125, 80 };
 		String string = "MYFCrMCnTH3tHiyP7bBSKNq2XxGTjB3CVpnRYNQVsEu4U6VaNZmZQLGdMd7njCGUY7uP93XYX9G6uSdnZes2cTyPATsy6DAzpNQT";
 		String ciphertext = instance.encrypt(string, key);
