@@ -118,7 +118,7 @@ public class Crypto {
 		return hash(bytes, salt, Crypto.HASH_BITS_COUNT);
 	}
 
-	public byte[] hash(byte[] bytes, byte[] salt, int bitsCount) {
+	byte[] hash(byte[] bytes, byte[] salt, int bitsCount) {
 		pbeParametersGenerator.init(bytes, salt, Crypto.HASH_ITERATIONS_COUNT);
 		KeyParameter key = (KeyParameter) pbeParametersGenerator.generateDerivedMacParameters(bitsCount);
 		return key.getKey();
