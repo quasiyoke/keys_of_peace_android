@@ -6,7 +6,7 @@ import org.spongycastle.crypto.CipherParameters;
 import org.spongycastle.crypto.DataLengthException;
 import org.spongycastle.crypto.InvalidCipherTextException;
 import org.spongycastle.crypto.digests.SHA256Digest;
-import org.spongycastle.crypto.engines.RijndaelEngine;
+import org.spongycastle.crypto.engines.AESEngine;
 import org.spongycastle.crypto.generators.PKCS5S2ParametersGenerator;
 import org.spongycastle.crypto.modes.CBCBlockCipher;
 import org.spongycastle.crypto.paddings.PaddedBufferedBlockCipher;
@@ -20,6 +20,8 @@ public class Crypto {
 	final static String[] ALPHABETS_BITS_VALUES = { "23456789", "abcdefghijkmnopqrstuvwxyz", "ABCDEFGHJKLMNPQRSTUVWXYZ", "~!@#$;%^:&?*()-+=[]{}\\|/<>,." };
 
 	final static Charset CHARSET = Charset.forName("UTF-8");
+	
+	final static int IV_BITS_COUNT = 128;
 
 	final static int HASH_BITS_COUNT = 256;
 
@@ -28,8 +30,10 @@ public class Crypto {
 	final static int SALT_BITS_COUNT = 256;
 
 	private static Crypto instance;
+	
+	PKCS5S2ParametersGenerator pbeParametersGenerator = new PKCS5S2ParametersGenerator(new SHA256Digest());
 
-	PaddedBufferedBlockCipher cipher = new PaddedBufferedBlockCipher(new CBCBlockCipher(new RijndaelEngine(HASH_BITS_COUNT)));
+	PaddedBufferedBlockCipher cipher = new PaddedBufferedBlockCipher(new CBCBlockCipher(new AESEngine()));
 
 	SecureRandom random = new SecureRandom();
 
@@ -45,15 +49,14 @@ public class Crypto {
 	}
 
 	public String encrypt(String string, byte[] key) throws CryptoException {
-		byte[] iv = getSalt();
-		CipherParameters parameters = new ParametersWithIV(new KeyParameter(key), iv);
+		byte[] salt = getSalt();
 		cipher.reset();
-		cipher.init(true, parameters);
+		cipher.init(true, getCipherParameters(key, salt));
 		byte[] bytes = string.getBytes(Crypto.CHARSET);
 		byte[] ciphertext = new byte[cipher.getOutputSize(bytes.length)];
-		int i = cipher.processBytes(bytes, 0, bytes.length, ciphertext, 0);
+		int length = cipher.processBytes(bytes, 0, bytes.length, ciphertext, 0);
 		try {
-			i += cipher.doFinal(ciphertext, i);
+			length += cipher.doFinal(ciphertext, length);
 		} catch (DataLengthException e) {
 			throw new CryptoException("DataLengthException during encryption");
 		} catch (IllegalStateException e) {
@@ -61,24 +64,23 @@ public class Crypto {
 		} catch (InvalidCipherTextException e) {
 			throw new CryptoException("InvalidCipherTextException during encryption");
 		}
-		if (ciphertext.length != i) {
+		if (ciphertext.length != length) {
 			throw new CryptoException("Unexpected behaviour during encryption: getOutputSize value incorrect");
 		}
-		byte[] data = new byte[iv.length + ciphertext.length];
-		System.arraycopy(iv, 0, data, 0, iv.length);
-		System.arraycopy(ciphertext, 0, data, iv.length, ciphertext.length);
+		byte[] data = new byte[Crypto.SALT_BITS_COUNT / 8 + ciphertext.length];
+		System.arraycopy(salt, 0, data, 0, Crypto.SALT_BITS_COUNT / 8);
+		System.arraycopy(ciphertext, 0, data, Crypto.SALT_BITS_COUNT / 8, ciphertext.length);
 		return toString(data);
 	}
 
 	public String decrypt(String dataString, byte[] key) throws CryptoException {
 		byte[] data = fromString(dataString);
-		byte[] iv = new byte[Crypto.SALT_BITS_COUNT / 8];
-		System.arraycopy(data, 0, iv, 0, iv.length);
-		CipherParameters parameters = new ParametersWithIV(new KeyParameter(key), iv);
+		byte[] salt = new byte[Crypto.SALT_BITS_COUNT / 8];
+		System.arraycopy(data, 0, salt, 0, Crypto.SALT_BITS_COUNT / 8);
 		cipher.reset();
-		cipher.init(false, parameters);
-		byte[] temp = new byte[cipher.getOutputSize(data.length - iv.length)];
-		int length = cipher.processBytes(data, iv.length, data.length - iv.length, temp, 0);
+		cipher.init(false, getCipherParameters(key, salt));
+		byte[] temp = new byte[cipher.getOutputSize(data.length - Crypto.SALT_BITS_COUNT / 8)];
+		int length = cipher.processBytes(data, salt.length, data.length - Crypto.SALT_BITS_COUNT / 8, temp, 0);
 		try {
 			length += cipher.doFinal(temp, length);
 		} catch (DataLengthException e) {
@@ -92,6 +94,15 @@ public class Crypto {
 		System.arraycopy(temp, 0, bytes, 0, length);
 		return new String(bytes, Crypto.CHARSET);
 	}
+	
+	CipherParameters getCipherParameters(byte[] data, byte[] salt) {
+		byte[] hash = this.hash(data, salt, Crypto.HASH_BITS_COUNT + Crypto.IV_BITS_COUNT);
+		byte[] key = new byte[Crypto.HASH_BITS_COUNT / 8];
+		byte[] iv = new byte[Crypto.IV_BITS_COUNT / 8];
+		System.arraycopy(hash, 0, key, 0, Crypto.HASH_BITS_COUNT / 8);
+		System.arraycopy(hash, Crypto.HASH_BITS_COUNT / 8, iv, 0, Crypto.IV_BITS_COUNT / 8);
+		return new ParametersWithIV(new KeyParameter(key), iv);
+	}
 
 	public byte[] getSalt() {
 		byte[] salt = new byte[Crypto.SALT_BITS_COUNT / 8];
@@ -104,9 +115,12 @@ public class Crypto {
 	}
 
 	public byte[] hash(byte[] bytes, byte[] salt) {
-		PKCS5S2ParametersGenerator generator = new PKCS5S2ParametersGenerator(new SHA256Digest());
-		generator.init(bytes, salt, Crypto.HASH_ITERATIONS_COUNT);
-		KeyParameter key = (KeyParameter) generator.generateDerivedMacParameters(Crypto.HASH_BITS_COUNT);
+		return hash(bytes, salt, Crypto.HASH_BITS_COUNT);
+	}
+
+	public byte[] hash(byte[] bytes, byte[] salt, int bitsCount) {
+		pbeParametersGenerator.init(bytes, salt, Crypto.HASH_ITERATIONS_COUNT);
+		KeyParameter key = (KeyParameter) pbeParametersGenerator.generateDerivedMacParameters(bitsCount);
 		return key.getKey();
 	}
 
