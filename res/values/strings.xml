@@ -3,6 +3,7 @@
 
     <string name="app_name">Keys of Peace</string>
     <string name="action_settings">Settings</string>
-    <string name="hello_world">Hello world!</string>
+    <string name="first_login_txt">First Login</string>
+    <string name="login_error_txt">Error, please, type your email and password again!</string>
 
 </resources>
